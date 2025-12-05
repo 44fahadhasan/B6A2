@@ -9,8 +9,8 @@ interface IUser {
   role: string;
 }
 
-// Generate Tokens
-export const generateTokens = (payload: IUser) => {
+// Generate Token
+export const generateToken = (payload: IUser) => {
   const token = jwt.sign(
     payload, // Payload
     config.jwt.token_secret as string, // Secret key
@@ -18,14 +18,4 @@ export const generateTokens = (payload: IUser) => {
   );
 
   return token;
-};
-
-// Verify Token
-export const verifyToken = (token: string) => {
-  try {
-    const decoded = jwt.verify(token, config.jwt.token_secret as string);
-    return decoded;
-  } catch (err) {
-    return null;
-  }
 };

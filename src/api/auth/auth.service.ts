@@ -1,6 +1,6 @@
 import { pool } from "../../config/db.js";
-import { compareHash, createHash } from "../../utils/hashedManager.js";
-import { generateTokens } from "../../utils/token.js";
+import { compareHash, createHash } from "../../utils/hashed.js";
+import { generateToken } from "../../utils/token.js";
 
 export const signup = async (payload: Record<string, unknown>) => {
   const { name, email, password, phone, role } = payload;
@@ -44,7 +44,7 @@ export const login = async (payload: Record<string, unknown>) => {
 
   if (!isMatch) return false;
 
-  const token = generateTokens(user);
+  const token = generateToken(user);
 
   return { token, user };
 };
