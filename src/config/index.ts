@@ -6,11 +6,18 @@ dotenv.config({
   path: path.join(process.cwd(), ".env"),
 });
 
-/**
- * Central config object
- */
+// Central config object
 export default {
   // App
   port: process.env.PORT || 5000,
   site_name: process.env.SITE_NAME || "Server",
+
+  // Database
+  connection_string: process.env.CONNECTION_STRING,
+
+  // JWT
+  jwt: {
+    token_secret: process.env.TOKEN_SECRET,
+    token_expires_in: Number(process.env.TOKEN_EXPIRES_IN) || 604800, // default 7d
+  },
 };
