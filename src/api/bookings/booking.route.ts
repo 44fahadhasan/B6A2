@@ -12,4 +12,22 @@ const router = Router();
  */
 router.post("/", auth("customer", "admin"), bookingControllers.createBooking);
 
+/**
+ * @route   GET /api/v1/bookings
+ * @desc    Retrieve bookings based on user role
+ * @access  Role-based (Admin sees all, Customer sees own)
+ */
+router.get("/", auth("customer", "admin"), bookingControllers.getAllBookings);
+
+/**
+ * @route   PUT /api/v1/bookings/:bookingId
+ * @desc    Update booking status based on user role and business rules
+ * @access  Role-based
+ */
+router.put(
+  "/:bookingId",
+  auth("customer", "admin"),
+  bookingControllers.updateBooking
+);
+
 export default router;

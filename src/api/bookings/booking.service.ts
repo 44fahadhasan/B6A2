@@ -1,3 +1,4 @@
+import { JwtPayload } from "jsonwebtoken";
 import { pool } from "../../config/db";
 
 const createBooking = async (payload: Record<string, unknown>) => {
@@ -78,6 +79,140 @@ const createBooking = async (payload: Record<string, unknown>) => {
   };
 };
 
-const bookingServices = { createBooking };
+const getAllBookings = async (user: JwtPayload) => {
+  if (user.role === "admin") {
+    const result = await pool.query(
+      `SELECT 
+        book.id,
+        book.customer_id,
+        book.vehicle_id,
+        TO_CHAR(book.rent_start_date, 'YYYY-MM-DD') AS rent_start_date,
+        TO_CHAR(book.rent_end_date, 'YYYY-MM-DD') AS rent_end_date,
+        book.total_price,
+        book.status,
+        u.name AS customer_name, 
+        u.email AS customer_email,
+        v.vehicle_name, 
+        v.registration_number
+      FROM bookings AS book
+      JOIN users AS u ON book.customer_id = u.id
+      JOIN vehicles AS v ON book.vehicle_id = v.id`
+    );
+
+    const bookings = result.rows.map((row) => ({
+      id: row.id,
+      customer_id: row.customer_id,
+      vehicle_id: row.vehicle_id,
+      rent_start_date: row.rent_start_date,
+      rent_end_date: row.rent_end_date,
+      total_price: Number(row.total_price),
+      status: row.status,
+      customer: {
+        name: row.customer_name,
+        email: row.customer_email,
+      },
+      vehicle: {
+        vehicle_name: row.vehicle_name,
+        registration_number: row.registration_number,
+      },
+    }));
+
+    return bookings;
+  } else {
+    const result = await pool.query(
+      `SELECT 
+        book.id,
+        book.vehicle_id,
+        book.total_price,
+        book.status,
+        TO_CHAR(book.rent_start_date, 'YYYY-MM-DD') AS rent_start_date,
+        TO_CHAR(book.rent_end_date, 'YYYY-MM-DD') AS rent_end_date,
+        v.vehicle_name, v.registration_number, v.type
+      FROM bookings AS book
+      JOIN vehicles AS v ON book.vehicle_id = v.id
+      WHERE book.customer_id=$1`,
+      [user.id]
+    );
+
+    const bookings = result.rows.map((row) => ({
+      id: row.id,
+      vehicle_id: row.vehicle_id,
+      rent_start_date: row.rent_start_date,
+      rent_end_date: row.rent_end_date,
+      total_price: Number(row.total_price),
+      status: row.status,
+      vehicle: {
+        vehicle_name: row.vehicle_name,
+        registration_number: row.registration_number,
+        type: row.type,
+      },
+    }));
+
+    return bookings;
+  }
+};
+
+const updateBooking = async (id: string, status: string, user: JwtPayload) => {
+  const bookingQry = await pool.query("SELECT * FROM bookings WHERE id=$1", [
+    id,
+  ]);
+
+  if (!bookingQry.rowCount) {
+    throw {
+      statusCode: 404,
+      message: "Booking not found",
+    };
+  }
+
+  const booking = bookingQry.rows[0];
+
+  if (status === "returned") {
+    if (user.role !== "admin")
+      throw {
+        statusCode: 403,
+        message: "Only admin can mark returned",
+      };
+
+    const vehicleRes = await pool.query(
+      "UPDATE vehicles SET availability_status='available' WHERE id=$1 RETURNING availability_status",
+      [booking.vehicle_id]
+    );
+
+    booking.vehicle = {
+      availability_status: vehicleRes.rows[0].availability_status,
+    };
+  }
+
+  if (status === "cancelled") {
+    if (user.role !== "customer" || user.id !== booking.customer_id)
+      throw {
+        statusCode: 403,
+        message: "Forbidden",
+      };
+
+    if (new Date() >= new Date(booking.rent_start_date))
+      throw {
+        statusCode: 400,
+        message: "You cannot cancel a booking that has already started",
+      };
+  }
+
+  const result = await pool.query(
+    `UPDATE bookings SET status=$1 WHERE id=$2 RETURNING id, customer_id, vehicle_id, rent_start_date::TEXT, rent_end_date::TEXT, total_price, status`,
+    [status, id]
+  );
+
+  if (status === "returned") {
+    result.rows[0].vehicle = booking.vehicle;
+  }
+
+  return result.rows[0];
+};
+
+const bookingServices = {
+  createBooking,
+  getAllBookings,
+  updateBooking,
+};
 
 export default bookingServices;

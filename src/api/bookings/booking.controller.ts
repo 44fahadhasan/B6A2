@@ -20,6 +20,66 @@ const createBooking = async (
   }
 };
 
-const bookingControllers = { createBooking };
+const getAllBookings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { user } = req;
+
+    const result = await bookingServices.getAllBookings(user!);
+
+    const message =
+      user?.role === "admin"
+        ? "Bookings retrieved successfully"
+        : "Your bookings retrieved successfully";
+
+    return sendResponse(res, {
+      message,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const updateBooking = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const {
+      user,
+      body: { status },
+      params: { bookingId },
+    } = req;
+
+    const result = await bookingServices.updateBooking(
+      bookingId!,
+      status,
+      user!
+    );
+
+    const message =
+      status === "cancelled"
+        ? "Booking cancelled successfully"
+        : "Booking marked as returned. Vehicle is now available";
+
+    return sendResponse(res, {
+      message,
+      data: result,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+const bookingControllers = {
+  createBooking,
+  getAllBookings,
+  updateBooking,
+};
 
 export default bookingControllers;

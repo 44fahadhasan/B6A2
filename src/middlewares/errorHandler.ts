@@ -32,6 +32,6 @@ export const errorHandler = (
   return res.status(statusCode).json({
     success: false,
     message,
-    developerMessage: err.stack || "Unknown error",
+    errors: err.stack || "Unknown error",
   });
 };
