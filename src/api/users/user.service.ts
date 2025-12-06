@@ -58,8 +58,19 @@ const updateUser = async (
   return result.rows[0];
 };
 
-// todo: only if no active bookings exist
 const deleteUser = async (id: string) => {
+  const bookingQry = await pool.query(
+    `SELECT 1 FROM bookings WHERE customer_id=$1 AND status='active'`,
+    [id]
+  );
+
+  if (bookingQry.rowCount) {
+    throw {
+      statusCode: 400,
+      message: "Cannot delete user because active bookings exist",
+    };
+  }
+
   const result = await pool.query(
     `DELETE FROM users
     WHERE id = $1`,
