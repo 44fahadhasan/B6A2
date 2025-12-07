@@ -1,10 +1,14 @@
 import express, { Request, Response } from "express";
 import config from "./config";
+import startCronJobs from "./cron";
 import { errorHandler, notFoundHandler } from "./middlewares/errorHandler";
 import router from "./routes";
 
 // Initialize Express App
 const app = express();
+
+// Start cron job
+startCronJobs();
 
 // Parse JSON
 app.use(express.json());
