@@ -166,6 +166,22 @@ const updateBooking = async (id: string, status: string, user: JwtPayload) => {
 
   const booking = bookingQry.rows[0];
 
+  const currentDate = new Date();
+
+  if (
+    booking.status === "active" &&
+    new Date(booking.rent_end_date) < currentDate
+  ) {
+    await pool.query(`UPDATE bookings SET status='returned' WHERE id=$1`, [
+      booking.id,
+    ]);
+
+    await pool.query(
+      `UPDATE vehicles SET availability_status='available' WHERE id=$1`,
+      [booking.vehicle_id]
+    );
+  }
+
   if (status === "returned") {
     if (user.role !== "admin")
       throw {
@@ -174,7 +190,7 @@ const updateBooking = async (id: string, status: string, user: JwtPayload) => {
       };
 
     const vehicleRes = await pool.query(
-      "UPDATE vehicles SET availability_status='available' WHERE id=$1 RETURNING availability_status",
+      `UPDATE vehicles SET availability_status='available' WHERE id=$1 RETURNING availability_status`,
       [booking.vehicle_id]
     );
 
@@ -190,11 +206,16 @@ const updateBooking = async (id: string, status: string, user: JwtPayload) => {
         message: "Forbidden",
       };
 
-    if (new Date() >= new Date(booking.rent_start_date))
+    if (currentDate >= new Date(booking.rent_start_date))
       throw {
         statusCode: 400,
         message: "You cannot cancel a booking that has already started",
       };
+
+    await pool.query(
+      `UPDATE vehicles SET availability_status='available' WHERE id=$1`,
+      [booking.vehicle_id]
+    );
   }
 
   const result = await pool.query(
